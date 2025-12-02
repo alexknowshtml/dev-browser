@@ -1,0 +1,11 @@
+{
+  "name": "dev-browser-skill",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start-server": "bun run scripts/start-server.ts"
+  },
+  "dependencies": {
+    "dev-browser": "workspace:*"
+  }
+}

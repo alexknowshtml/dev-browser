@@ -1,0 +1,10 @@
+{
+  "name": "browser-skill",
+  "type": "module",
+  "private": true,
+  "workspaces": ["packages/*", "plugins/*"],
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}
