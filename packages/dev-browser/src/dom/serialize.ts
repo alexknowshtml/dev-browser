@@ -125,9 +125,20 @@ export function buildSelector(node: RawDOMNode, ancestors: RawDOMNode[] = []): s
 
 /**
  * Escape special characters in CSS selector values
+ * Also handles identifiers starting with digits (invalid in CSS without escaping)
  */
 function escapeSelector(value: string): string {
-  return value.replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, "\\$1");
+  // Escape special characters
+  let escaped = value.replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, "\\$1");
+
+  // CSS identifiers cannot start with a digit - escape using hex format \XX
+  if (/^[0-9]/.test(escaped)) {
+    const firstChar = escaped.charAt(0);
+    const hexCode = firstChar.charCodeAt(0).toString(16);
+    escaped = `\\${hexCode} ${escaped.slice(1)}`;
+  }
+
+  return escaped;
 }
 
 /**
