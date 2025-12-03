@@ -34,6 +34,7 @@ cd packages/dev-browser && bun x tsc --noEmit
 2. **Tests**: `bun run test` - Ensure all tests pass
 
 Common TypeScript issues in this codebase:
+
 - Use `import type { ... }` for type-only imports (required by `verbatimModuleSyntax`)
 - Browser globals (`document`, `window`) in `page.evaluate()` callbacks need `declare const document: any;` since DOM lib is not included
 

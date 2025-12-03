@@ -14,12 +14,7 @@ import type {
 } from "./types";
 import { getLLMTreeWithBackendIds, resolveSelectorFromBackendId } from "./dom/index.js";
 
-export type {
-  ServeOptions,
-  GetPageResponse,
-  ListPagesResponse,
-  ServerInfoResponse,
-};
+export type { ServeOptions, GetPageResponse, ListPagesResponse, ServerInfoResponse };
 
 export interface DevBrowserServer {
   wsEndpoint: string;
@@ -50,11 +45,7 @@ async function fetchWithRetry(
 }
 
 // Helper to add timeout to promises
-function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  message: string
-): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return Promise.race([
     promise,
     new Promise<never>((_, reject) =>
@@ -63,9 +54,7 @@ function withTimeout<T>(
   ]);
 }
 
-export async function serve(
-  options: ServeOptions = {}
-): Promise<DevBrowserServer> {
+export async function serve(options: ServeOptions = {}): Promise<DevBrowserServer> {
   const port = options.port ?? 9222;
   const headless = options.headless ?? false;
   const cdpPort = options.cdpPort ?? 9223;
@@ -94,19 +83,14 @@ export async function serve(
   console.log("Launching browser with persistent context...");
 
   // Launch persistent context - this persists cookies, localStorage, cache, etc.
-  const context: BrowserContext = await chromium.launchPersistentContext(
-    userDataDir,
-    {
-      headless,
-      args: [`--remote-debugging-port=${cdpPort}`],
-    }
-  );
+  const context: BrowserContext = await chromium.launchPersistentContext(userDataDir, {
+    headless,
+    args: [`--remote-debugging-port=${cdpPort}`],
+  });
   console.log("Browser launched with persistent profile...");
 
   // Get the CDP WebSocket endpoint from Chrome's JSON API (with retry for slow startup)
-  const cdpResponse = await fetchWithRetry(
-    `http://127.0.0.1:${cdpPort}/json/version`
-  );
+  const cdpResponse = await fetchWithRetry(`http://127.0.0.1:${cdpPort}/json/version`);
   const cdpInfo = (await cdpResponse.json()) as { webSocketDebuggerUrl: string };
   const wsEndpoint = cdpInfo.webSocketDebuggerUrl;
   console.log(`CDP WebSocket endpoint: ${wsEndpoint}`);
@@ -177,11 +161,7 @@ export async function serve(
     let entry = registry.get(name);
     if (!entry) {
       // Create new page in the persistent context (with timeout to prevent hangs)
-      const page = await withTimeout(
-        context.newPage(),
-        30000,
-        "Page creation timed out after 30s"
-      );
+      const page = await withTimeout(context.newPage(), 30000, "Page creation timed out after 30s");
       const targetId = await getTargetId(page);
       entry = { page, targetId, selectorMap: null, mapVersion: 0 };
       registry.set(name, entry);
@@ -234,10 +214,7 @@ export async function serve(
 
     try {
       // Extract LLM tree with backend node IDs
-      const { tree, backendNodeMap } = await getLLMTreeWithBackendIds(
-        entry.page,
-        context
-      );
+      const { tree, backendNodeMap } = await getLLMTreeWithBackendIds(entry.page, context);
 
       // Update entry with new selector map
       entry.selectorMap = backendNodeMap;
@@ -291,11 +268,7 @@ export async function serve(
 
       try {
         // Resolve backendNodeId to CSS selector
-        const selector = await resolveSelectorFromBackendId(
-          entry.page,
-          context,
-          backendNodeId
-        );
+        const selector = await resolveSelectorFromBackendId(entry.page, context, backendNodeId);
 
         const response: GetSelectorResponse = {
           index,

@@ -7,25 +7,25 @@
  * Bounding rectangle in document coordinates
  */
 export interface BoundingRect {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 /**
  * Computed styles relevant for visibility and interactivity detection
  */
 export interface ComputedStyles {
-	display: string;
-	visibility: string;
-	opacity: string;
-	cursor: string;
-	backgroundColor: string;
-	overflow: string;
-	overflowX: string;
-	overflowY: string;
-	pointerEvents: string;
+  display: string;
+  visibility: string;
+  opacity: string;
+  cursor: string;
+  backgroundColor: string;
+  overflow: string;
+  overflowX: string;
+  overflowY: string;
+  pointerEvents: string;
 }
 
 /**
@@ -33,66 +33,66 @@ export interface ComputedStyles {
  * Contains all data needed for processing
  */
 export interface RawDOMNode {
-	/** Unique node identifier within extraction */
-	nodeId: number;
+  /** Unique node identifier within extraction */
+  nodeId: number;
 
-	/** Node type: element, text, or document fragment */
-	nodeType: 'ELEMENT_NODE' | 'TEXT_NODE' | 'DOCUMENT_FRAGMENT_NODE';
+  /** Node type: element, text, or document fragment */
+  nodeType: "ELEMENT_NODE" | "TEXT_NODE" | "DOCUMENT_FRAGMENT_NODE";
 
-	/** HTML tag name (lowercase) */
-	tagName: string;
+  /** HTML tag name (lowercase) */
+  tagName: string;
 
-	/** All HTML attributes */
-	attributes: Record<string, string>;
+  /** All HTML attributes */
+  attributes: Record<string, string>;
 
-	/** Direct text content (for text nodes or elements with text) */
-	textContent: string;
+  /** Direct text content (for text nodes or elements with text) */
+  textContent: string;
 
-	/** Bounding rectangle in document coordinates */
-	boundingRect: BoundingRect;
+  /** Bounding rectangle in document coordinates */
+  boundingRect: BoundingRect;
 
-	/** Relevant computed styles */
-	computedStyles: ComputedStyles;
+  /** Relevant computed styles */
+  computedStyles: ComputedStyles;
 
-	/** Whether element can scroll */
-	isScrollable: boolean;
+  /** Whether element can scroll */
+  isScrollable: boolean;
 
-	/** Current scroll position */
-	scrollTop: number;
-	scrollLeft: number;
+  /** Current scroll position */
+  scrollTop: number;
+  scrollLeft: number;
 
-	/** Total scrollable height */
-	scrollHeight: number;
-	scrollWidth: number;
+  /** Total scrollable height */
+  scrollHeight: number;
+  scrollWidth: number;
 
-	/** Visible area dimensions */
-	clientHeight: number;
-	clientWidth: number;
+  /** Visible area dimensions */
+  clientHeight: number;
+  clientWidth: number;
 
-	/** Paint order for occlusion detection */
-	paintOrder: number;
+  /** Paint order for occlusion detection */
+  paintOrder: number;
 
-	/** Child nodes */
-	children: RawDOMNode[];
+  /** Child nodes */
+  children: RawDOMNode[];
 
-	/** Shadow DOM roots (open or closed) */
-	shadowRoots: RawDOMNode[];
+  /** Shadow DOM roots (open or closed) */
+  shadowRoots: RawDOMNode[];
 
-	/** Shadow DOM mode if this is a shadow host */
-	shadowMode?: 'open' | 'closed';
+  /** Shadow DOM mode if this is a shadow host */
+  shadowMode?: "open" | "closed";
 
-	/** Content document for iframes */
-	contentDocument: RawDOMNode | null;
+  /** Content document for iframes */
+  contentDocument: RawDOMNode | null;
 
-	/** Whether this is an iframe or frame element */
-	isFrame: boolean;
+  /** Whether this is an iframe or frame element */
+  isFrame: boolean;
 
-	/** Frame URL for iframes */
-	frameUrl?: string;
+  /** Frame URL for iframes */
+  frameUrl?: string;
 
-	/** Viewport dimensions (for root node) */
-	viewportWidth?: number;
-	viewportHeight?: number;
+  /** Viewport dimensions (for root node) */
+  viewportWidth?: number;
+  viewportHeight?: number;
 }
 
 /**
@@ -100,29 +100,29 @@ export interface RawDOMNode {
  * Used to expose virtual sub-components to the LLM
  */
 export interface CompoundComponent {
-	/** Component name (e.g., "Dropdown Toggle", "Browse Files") */
-	name: string;
+  /** Component name (e.g., "Dropdown Toggle", "Browse Files") */
+  name: string;
 
-	/** ARIA role */
-	role: string;
+  /** ARIA role */
+  role: string;
 
-	/** Min value for sliders/spinbuttons */
-	min?: number;
+  /** Min value for sliders/spinbuttons */
+  min?: number;
 
-	/** Max value for sliders/spinbuttons */
-	max?: number;
+  /** Max value for sliders/spinbuttons */
+  max?: number;
 
-	/** Current value */
-	current?: string;
+  /** Current value */
+  current?: string;
 
-	/** Options for select/listbox */
-	options?: string[];
+  /** Options for select/listbox */
+  options?: string[];
 
-	/** Option count for large lists */
-	count?: number;
+  /** Option count for large lists */
+  count?: number;
 
-	/** Format hint for date/time inputs */
-	format?: string;
+  /** Format hint for date/time inputs */
+  format?: string;
 }
 
 /**
@@ -130,53 +130,53 @@ export interface CompoundComponent {
  * Ready for serialization
  */
 export interface ProcessedNode extends RawDOMNode {
-	/** Whether element passes visibility checks */
-	isVisible: boolean;
+  /** Whether element passes visibility checks */
+  isVisible: boolean;
 
-	/** Whether element is interactive */
-	isInteractive: boolean;
+  /** Whether element is interactive */
+  isInteractive: boolean;
 
-	/** Interactive element index (null if not interactive) */
-	interactiveIndex: number | null;
+  /** Interactive element index (null if not interactive) */
+  interactiveIndex: number | null;
 
-	/** Whether element is new since last extraction */
-	isNew: boolean;
+  /** Whether element is new since last extraction */
+  isNew: boolean;
 
-	/** Whether element is ignored due to paint order occlusion */
-	ignoredByPaintOrder: boolean;
+  /** Whether element is ignored due to paint order occlusion */
+  ignoredByPaintOrder: boolean;
 
-	/** Whether element is ignored due to parent bbox propagation */
-	ignoredByBboxPropagation: boolean;
+  /** Whether element is ignored due to parent bbox propagation */
+  ignoredByBboxPropagation: boolean;
 
-	/** Scroll information for scrollable containers */
-	scrollInfo?: {
-		pagesAbove: number;
-		pagesBelow: number;
-		scrollPercentage: number;
-	};
+  /** Scroll information for scrollable containers */
+  scrollInfo?: {
+    pagesAbove: number;
+    pagesBelow: number;
+    scrollPercentage: number;
+  };
 
-	/** Compound components for complex inputs */
-	compoundComponents?: CompoundComponent[];
+  /** Compound components for complex inputs */
+  compoundComponents?: CompoundComponent[];
 
-	/** Processed children */
-	children: ProcessedNode[];
+  /** Processed children */
+  children: ProcessedNode[];
 
-	/** Processed shadow roots */
-	shadowRoots: ProcessedNode[];
+  /** Processed shadow roots */
+  shadowRoots: ProcessedNode[];
 
-	/** Processed content document */
-	contentDocument: ProcessedNode | null;
+  /** Processed content document */
+  contentDocument: ProcessedNode | null;
 }
 
 /**
  * Result of getLLMTree extraction
  */
 export interface LLMTreeResult {
-	/** Formatted tree string in browser-use format */
-	tree: string;
+  /** Formatted tree string in browser-use format */
+  tree: string;
 
-	/** Map of interactive index to CSS selector */
-	selectorMap: Map<number, string>;
+  /** Map of interactive index to CSS selector */
+  selectorMap: Map<number, string>;
 }
 
 /**
@@ -184,34 +184,34 @@ export interface LLMTreeResult {
  * Extends LLMTreeResult with CDP backendNodeIds for persistent element identification
  */
 export interface LLMTreeWithBackendIdsResult extends LLMTreeResult {
-	/** Map of interactive index to CDP backendNodeId */
-	backendNodeMap: Map<number, number>;
+  /** Map of interactive index to CDP backendNodeId */
+  backendNodeMap: Map<number, number>;
 }
 
 /**
  * Options for getLLMTree extraction
  */
 export interface GetLLMTreeOptions {
-	/** Previous state for detecting new elements */
-	previousState?: Map<number, boolean>;
+  /** Previous state for detecting new elements */
+  previousState?: Map<number, boolean>;
 
-	/** Include iframe content documents (default: true) */
-	includeIframes?: boolean;
+  /** Include iframe content documents (default: true) */
+  includeIframes?: boolean;
 
-	/** Include shadow DOM content (default: true) */
-	includeShadowDOM?: boolean;
+  /** Include shadow DOM content (default: true) */
+  includeShadowDOM?: boolean;
 
-	/** Maximum text content length before truncation (default: 100) */
-	maxTextLength?: number;
+  /** Maximum text content length before truncation (default: 100) */
+  maxTextLength?: number;
 
-	/** Attributes to include in output */
-	includeAttributes?: string[];
+  /** Attributes to include in output */
+  includeAttributes?: string[];
 
-	/** Enable paint order filtering (default: true) */
-	enablePaintOrderFiltering?: boolean;
+  /** Enable paint order filtering (default: true) */
+  enablePaintOrderFiltering?: boolean;
 
-	/** Enable bounding box propagation filtering (default: true) */
-	enableBboxFiltering?: boolean;
+  /** Enable bounding box propagation filtering (default: true) */
+  enableBboxFiltering?: boolean;
 }
 
 /**
@@ -219,124 +219,116 @@ export interface GetLLMTreeOptions {
  * Matches browser-use defaults
  */
 export const DEFAULT_INCLUDE_ATTRIBUTES = [
-	// Core attributes
-	'type',
-	'id',
-	'name',
-	'role',
-	'class',
+  // Core attributes
+  "type",
+  "id",
+  "name",
+  "role",
+  "class",
 
-	// Form attributes
-	'placeholder',
-	'value',
-	'checked',
-	'selected',
-	'disabled',
-	'required',
-	'readonly',
+  // Form attributes
+  "placeholder",
+  "value",
+  "checked",
+  "selected",
+  "disabled",
+  "required",
+  "readonly",
 
-	// ARIA attributes
-	'aria-label',
-	'aria-expanded',
-	'aria-checked',
-	'aria-disabled',
-	'aria-placeholder',
-	'aria-valuemin',
-	'aria-valuemax',
-	'aria-valuenow',
+  // ARIA attributes
+  "aria-label",
+  "aria-expanded",
+  "aria-checked",
+  "aria-disabled",
+  "aria-placeholder",
+  "aria-valuemin",
+  "aria-valuemax",
+  "aria-valuenow",
 
-	// Link attributes
-	'href',
-	'target',
+  // Link attributes
+  "href",
+  "target",
 
-	// Media attributes
-	'alt',
-	'title',
-	'src',
+  // Media attributes
+  "alt",
+  "title",
+  "src",
 
-	// Validation attributes
-	'min',
-	'max',
-	'minlength',
-	'maxlength',
-	'pattern',
-	'step',
-	'inputmode',
-	'autocomplete',
-	'accept',
-	'multiple',
+  // Validation attributes
+  "min",
+  "max",
+  "minlength",
+  "maxlength",
+  "pattern",
+  "step",
+  "inputmode",
+  "autocomplete",
+  "accept",
+  "multiple",
 
-	// Data attributes
-	'data-testid',
-	'data-date-format',
+  // Data attributes
+  "data-testid",
+  "data-date-format",
 
-	// Content editable
-	'contenteditable',
+  // Content editable
+  "contenteditable",
 
-	// Tabindex
-	'tabindex',
+  // Tabindex
+  "tabindex",
 ];
 
 /**
  * Tags that are inherently interactive
  */
 export const INTERACTIVE_TAGS = [
-	'button',
-	'input',
-	'select',
-	'textarea',
-	'a',
-	'details',
-	'summary',
-	'option',
-	'optgroup',
+  "button",
+  "input",
+  "select",
+  "textarea",
+  "a",
+  "details",
+  "summary",
+  "option",
+  "optgroup",
 ];
 
 /**
  * ARIA roles that indicate interactivity
  */
 export const INTERACTIVE_ROLES = [
-	'button',
-	'link',
-	'menuitem',
-	'menuitemcheckbox',
-	'menuitemradio',
-	'option',
-	'radio',
-	'checkbox',
-	'tab',
-	'textbox',
-	'combobox',
-	'slider',
-	'spinbutton',
-	'listbox',
-	'searchbox',
-	'switch',
-	'treeitem',
+  "button",
+  "link",
+  "menuitem",
+  "menuitemcheckbox",
+  "menuitemradio",
+  "option",
+  "radio",
+  "checkbox",
+  "tab",
+  "textbox",
+  "combobox",
+  "slider",
+  "spinbutton",
+  "listbox",
+  "searchbox",
+  "switch",
+  "treeitem",
 ];
 
 /**
  * Tags whose children should be excluded if fully contained (bbox propagation)
  */
-export const PROPAGATING_TAGS = ['button', 'a'];
+export const PROPAGATING_TAGS = ["button", "a"];
 
 /**
  * Roles whose children should be excluded if fully contained
  */
-export const PROPAGATING_ROLES = ['button', 'combobox'];
+export const PROPAGATING_ROLES = ["button", "combobox"];
 
 /**
  * Tags that should be excluded from the tree entirely
  */
-export const EXCLUDED_TAGS = [
-	'script',
-	'style',
-	'noscript',
-	'meta',
-	'link',
-	'head',
-	'title',
-];
+export const EXCLUDED_TAGS = ["script", "style", "noscript", "meta", "link", "head", "title"];
 
 /**
  * Minimum iframe dimensions to be considered interactive

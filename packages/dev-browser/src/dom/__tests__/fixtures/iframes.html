@@ -1,17 +1,19 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Iframes Test</title>
-</head>
-<body>
-	<h1>Iframes Test</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iframes Test</title>
+  </head>
+  <body>
+    <h1>Iframes Test</h1>
 
-	<button id="main-page-button">Main Page Button</button>
+    <button id="main-page-button">Main Page Button</button>
 
-	<!-- Same-origin iframe with srcdoc -->
-	<iframe id="srcdoc-iframe" srcdoc="
+    <!-- Same-origin iframe with srcdoc -->
+    <iframe
+      id="srcdoc-iframe"
+      srcdoc="
 		<!DOCTYPE html>
 		<html>
 		<head><title>Iframe Content</title></head>
@@ -22,10 +24,15 @@
 			<a href='#' id='iframe-link'>Iframe Link</a>
 		</body>
 		</html>
-	" width="400" height="200"></iframe>
+	"
+      width="400"
+      height="200"
+    ></iframe>
 
-	<!-- Nested iframe -->
-	<iframe id="outer-iframe" srcdoc="
+    <!-- Nested iframe -->
+    <iframe
+      id="outer-iframe"
+      srcdoc="
 		<!DOCTYPE html>
 		<html>
 		<head><title>Outer Iframe</title></head>
@@ -41,21 +48,29 @@
 			' width='200' height='100'></iframe>
 		</body>
 		</html>
-	" width="400" height="300"></iframe>
+	"
+      width="400"
+      height="300"
+    ></iframe>
 
-	<!-- Small iframe (should not be interactive itself) -->
-	<iframe id="small-iframe" srcdoc="
+    <!-- Small iframe (should not be interactive itself) -->
+    <iframe
+      id="small-iframe"
+      srcdoc="
 		<!DOCTYPE html>
 		<html>
 		<body>
 			<button id='small-iframe-btn'>Small</button>
 		</body>
 		</html>
-	" width="40" height="40"></iframe>
+	"
+      width="40"
+      height="40"
+    ></iframe>
 
-	<!-- Empty iframe -->
-	<iframe id="empty-iframe" src="about:blank" width="200" height="100"></iframe>
+    <!-- Empty iframe -->
+    <iframe id="empty-iframe" src="about:blank" width="200" height="100"></iframe>
 
-	<button id="after-iframes-button">After Iframes Button</button>
-</body>
+    <button id="after-iframes-button">After Iframes Button</button>
+  </body>
 </html>

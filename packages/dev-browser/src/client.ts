@@ -157,9 +157,7 @@ export async function connect(serverUrl: string): Promise<DevBrowserClient> {
     },
 
     async getSelectorForID(name: string, index: number): Promise<string> {
-      const res = await fetch(
-        `${serverUrl}/pages/${encodeURIComponent(name)}/selector/${index}`
-      );
+      const res = await fetch(`${serverUrl}/pages/${encodeURIComponent(name)}/selector/${index}`);
 
       if (!res.ok) {
         throw new Error(`Failed to get selector: ${await res.text()}`);

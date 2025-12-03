@@ -169,9 +169,7 @@ await page.waitForTimeout(1000); // avoid if possible
 const text = await page.textContent(".message");
 const html = await page.innerHTML(".container");
 const value = await page.inputValue("input#search");
-const items = await page.$$eval(".item", (els) =>
-  els.map((e) => e.textContent)
-);
+const items = await page.$$eval(".item", (els) => els.map((e) => e.textContent));
 ```
 
 ### Screenshots
