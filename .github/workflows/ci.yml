@@ -24,6 +24,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
+        working-directory: skills/dev-browser
         run: bun install --frozen-lockfile
 
       - name: TypeScript check
@@ -43,9 +44,11 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
+        working-directory: skills/dev-browser
         run: bun install --frozen-lockfile
 
       - name: Install Playwright browsers
+        working-directory: skills/dev-browser
         run: bun x playwright install --with-deps chromium
 
       - name: Run tests
