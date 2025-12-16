@@ -53,7 +53,15 @@ The server starts a Chromium browser with a REST API for page management (defaul
 
 ## Writing Scripts
 
-Execute scripts inline using heredocs—no need to write files for one-off automation:
+Execute scripts inline using heredocs—no need to write files for one-off automation.
+
+> **CRITICAL: Always run scripts from `skills/dev-browser/`**
+>
+> Scripts must be executed from the `skills/dev-browser/` directory. The `@/` import alias (e.g., `@/client.js`) is configured in this directory's `tsconfig.json` and `package.json`. Running from any other directory will fail with:
+>
+> ```
+> ERR_MODULE_NOT_FOUND: Cannot find package '@/client.js'
+> ```
 
 ```bash
 cd skills/dev-browser && bun x tsx <<'EOF'
@@ -81,6 +89,7 @@ import { connect, waitForPageLoad } from "@/client.js";
 
 const client = await connect();
 const page = await client.page("main"); // get or create a named page
+await page.setViewportSize({ width: 1280, height: 800 }); // Required for screenshots
 
 // Your automation code here
 await page.goto("https://example.com");
