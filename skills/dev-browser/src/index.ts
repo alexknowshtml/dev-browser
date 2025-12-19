@@ -59,6 +59,7 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   const headless = options.headless ?? false;
   const cdpPort = options.cdpPort ?? 9223;
   const profileDir = options.profileDir;
+  const lazy = options.lazy ?? false;
 
   // Validate port numbers
   if (port < 1 || port > 65535) {
@@ -80,33 +81,62 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   mkdirSync(userDataDir, { recursive: true });
   console.log(`Using persistent browser profile: ${userDataDir}`);
 
-  console.log("Launching browser with persistent context...");
+  // Browser state - lazily initialized if lazy=true
+  let context: BrowserContext | null = null;
+  let wsEndpoint: string | null = null;
+  let internalWsEndpoint: string | null = null;
+  let browserLaunching: Promise<void> | null = null;
 
-  // Launch persistent context - this persists cookies, localStorage, cache, etc.
-  // When host is 0.0.0.0, also bind Chrome's debugging port to all interfaces
-  const cdpArgs = [`--remote-debugging-port=${cdpPort}`];
-  if (host === "0.0.0.0") {
-    cdpArgs.push("--remote-debugging-address=0.0.0.0");
+  // Function to launch the browser (called immediately or on first request)
+  async function launchBrowser(): Promise<void> {
+    if (context) return; // Already launched
+
+    console.log("Launching browser with persistent context...");
+
+    // Launch persistent context - this persists cookies, localStorage, cache, etc.
+    // When host is 0.0.0.0, also bind Chrome's debugging port to all interfaces
+    const cdpArgs = [`--remote-debugging-port=${cdpPort}`];
+    if (host === "0.0.0.0") {
+      cdpArgs.push("--remote-debugging-address=0.0.0.0");
+    }
+    context = await chromium.launchPersistentContext(userDataDir, {
+      headless,
+      args: cdpArgs,
+    });
+    console.log("Browser launched with persistent profile...");
+
+    // Get the CDP WebSocket endpoint from Chrome's JSON API (with retry for slow startup)
+    const cdpResponse = await fetchWithRetry(`http://127.0.0.1:${cdpPort}/json/version`);
+    const cdpInfo = (await cdpResponse.json()) as { webSocketDebuggerUrl: string };
+    internalWsEndpoint = cdpInfo.webSocketDebuggerUrl;
+    console.log(`Internal CDP WebSocket endpoint: ${internalWsEndpoint}`);
+
+    // Create proxied WebSocket endpoint that goes through our server
+    // This works around Chrome ignoring --remote-debugging-address on macOS
+    // Original: ws://127.0.0.1:9223/devtools/browser/xxx
+    // Proxied:  ws://<host>:9222/devtools/browser/xxx
+    const wsPath = new URL(internalWsEndpoint).pathname;
+    wsEndpoint = `ws://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}${wsPath}`;
+    console.log(`Proxied CDP WebSocket endpoint: ${wsEndpoint}`);
   }
-  const context: BrowserContext = await chromium.launchPersistentContext(userDataDir, {
-    headless,
-    args: cdpArgs,
-  });
-  console.log("Browser launched with persistent profile...");
 
-  // Get the CDP WebSocket endpoint from Chrome's JSON API (with retry for slow startup)
-  const cdpResponse = await fetchWithRetry(`http://127.0.0.1:${cdpPort}/json/version`);
-  const cdpInfo = (await cdpResponse.json()) as { webSocketDebuggerUrl: string };
-  const internalWsEndpoint = cdpInfo.webSocketDebuggerUrl;
-  console.log(`Internal CDP WebSocket endpoint: ${internalWsEndpoint}`);
+  // Ensure browser is launched (with deduplication for concurrent requests)
+  async function ensureBrowser(): Promise<void> {
+    if (context) return;
+    if (browserLaunching) {
+      await browserLaunching;
+      return;
+    }
+    browserLaunching = launchBrowser();
+    await browserLaunching;
+  }
 
-  // Create proxied WebSocket endpoint that goes through our server
-  // This works around Chrome ignoring --remote-debugging-address on macOS
-  // Original: ws://127.0.0.1:9223/devtools/browser/xxx
-  // Proxied:  ws://<host>:9222/devtools/browser/xxx
-  const wsPath = new URL(internalWsEndpoint).pathname;
-  const wsEndpoint = `ws://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}${wsPath}`;
-  console.log(`Proxied CDP WebSocket endpoint: ${wsEndpoint}`);
+  // Launch immediately unless lazy mode
+  if (!lazy) {
+    await launchBrowser();
+  } else {
+    console.log("Lazy mode: Browser will launch on first request");
+  }
 
   // Registry entry type for page tracking
   interface PageEntry {
@@ -119,7 +149,7 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
 
   // Helper to get CDP targetId for a page
   async function getTargetId(page: Page): Promise<string> {
-    const cdpSession = await context.newCDPSession(page);
+    const cdpSession = await context!.newCDPSession(page);
     try {
       const { targetInfo } = await cdpSession.send("Target.getTargetInfo");
       return targetInfo.targetId;
@@ -132,9 +162,10 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   const app: Express = express();
   app.use(express.json());
 
-  // GET / - server info
-  app.get("/", (_req: Request, res: Response) => {
-    const response: ServerInfoResponse = { wsEndpoint };
+  // GET / - server info (triggers browser launch if lazy)
+  app.get("/", async (_req: Request, res: Response) => {
+    await ensureBrowser();
+    const response: ServerInfoResponse = { wsEndpoint: wsEndpoint! };
     res.json(response);
   });
 
@@ -146,7 +177,7 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
     res.json(response);
   });
 
-  // POST /pages - get or create page
+  // POST /pages - get or create page (triggers browser launch if lazy)
   app.post("/pages", async (req: Request, res: Response) => {
     const body = req.body as GetPageRequest;
     const { name } = body;
@@ -166,11 +197,14 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
       return;
     }
 
+    // Ensure browser is launched
+    await ensureBrowser();
+
     // Check if page already exists
     let entry = registry.get(name);
     if (!entry) {
       // Create new page in the persistent context (with timeout to prevent hangs)
-      const page = await withTimeout(context.newPage(), 30000, "Page creation timed out after 30s");
+      const page = await withTimeout(context!.newPage(), 30000, "Page creation timed out after 30s");
       const targetId = await getTargetId(page);
       entry = { page, targetId };
       registry.set(name, entry);
@@ -181,7 +215,7 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
       });
     }
 
-    const response: GetPageResponse = { wsEndpoint, name, targetId: entry.targetId };
+    const response: GetPageResponse = { wsEndpoint: wsEndpoint!, name, targetId: entry.targetId };
     res.json(response);
   });
 
@@ -263,13 +297,19 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
     });
   });
 
-  // Handle upgrade requests
-  httpServer.on("upgrade", (req, socket, head) => {
+  // Handle upgrade requests (triggers browser launch if lazy)
+  httpServer.on("upgrade", async (req, socket, head) => {
     if (req.url?.startsWith("/devtools")) {
       console.log(`WebSocket upgrade request: ${req.url}`);
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        wss.emit("connection", ws, req);
-      });
+      try {
+        await ensureBrowser();
+        wss.handleUpgrade(req, socket, head, (ws) => {
+          wss.emit("connection", ws, req);
+        });
+      } catch (err) {
+        console.error("Failed to launch browser for WebSocket:", err);
+        socket.destroy();
+      }
     } else {
       socket.destroy();
     }
@@ -313,11 +353,13 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
     }
     registry.clear();
 
-    // Close context (this also closes the browser)
-    try {
-      await context.close();
-    } catch {
-      // Context might already be closed
+    // Close context (this also closes the browser) - only if launched
+    if (context) {
+      try {
+        await context.close();
+      } catch {
+        // Context might already be closed
+      }
     }
 
     server.close();
@@ -326,10 +368,12 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
 
   // Synchronous cleanup for forced exits
   const syncCleanup = () => {
-    try {
-      context.close();
-    } catch {
-      // Best effort
+    if (context) {
+      try {
+        context.close();
+      } catch {
+        // Best effort
+      }
     }
   };
 
@@ -362,7 +406,9 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   };
 
   return {
-    wsEndpoint,
+    // In lazy mode, wsEndpoint is null until browser launches
+    // Callers should use the HTTP API to get wsEndpoint
+    wsEndpoint: wsEndpoint ?? `ws://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}/devtools/browser/pending`,
     port,
     async stop() {
       removeHandlers();

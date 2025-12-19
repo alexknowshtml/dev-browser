@@ -164,6 +164,39 @@ HOST=0.0.0.0 bun run scripts/start-server.ts
 
 The server includes a WebSocket proxy that routes Chrome DevTools Protocol (CDP) connections through port 9222, working around Chrome's localhost-only CDP limitation on macOS.
 
+#### Lazy Mode (Recommended for Remote)
+
+By default, Chrome launches immediately when the server starts. With lazy mode, Chrome only launches when the first client connects:
+
+```bash
+HOST=0.0.0.0 LAZY=true bun run scripts/start-server.ts
+```
+
+This is useful when the server runs at startup but you don't always need the browser.
+
+#### Auto-Start with pm2
+
+To keep the server running and auto-restart on crashes or reboot:
+
+```bash
+# Install pm2 if needed
+npm install -g pm2
+
+# Start the server
+cd skills/dev-browser
+pm2 start ecosystem.config.cjs
+
+# Save for auto-start on reboot
+pm2 save
+pm2 startup  # Follow the instructions it prints
+```
+
+The included `ecosystem.config.cjs` configures:
+- Remote access (`HOST=0.0.0.0`)
+- Lazy mode (Chrome launches on first request)
+- Auto-restart on crashes
+- Log files in `logs/` directory
+
 ### Client Setup (Machine Running Claude Code)
 
 When connecting from a remote machine, the client needs to rewrite the WebSocket URL:

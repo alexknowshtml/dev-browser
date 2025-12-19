@@ -54,6 +54,19 @@ HOST=0.0.0.0 bun run scripts/start-server.ts
 
 This binds the HTTP API and WebSocket proxy to all interfaces. The server includes a built-in WebSocket proxy that routes CDP connections through port 9222, working around Chrome's localhost-only CDP limitation on macOS.
 
+**Lazy mode:** Add `LAZY=true` to delay Chrome launch until the first client connects:
+
+```bash
+HOST=0.0.0.0 LAZY=true bun run scripts/start-server.ts
+```
+
+**Auto-start with pm2:** Use the included `ecosystem.config.cjs` for persistent operation:
+
+```bash
+pm2 start ecosystem.config.cjs
+pm2 save && pm2 startup
+```
+
 **Important for remote connections:** Use Node.js (not Bun) for client scripts due to a Bun WebSocket compatibility issue that causes immediate disconnects over remote connections.
 
 #### Remote Client Example

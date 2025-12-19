@@ -8,6 +8,8 @@ export interface ServeOptions {
   cdpPort?: number;
   /** Directory to store persistent browser profiles (cookies, localStorage, etc.) */
   profileDir?: string;
+  /** If true, Chrome is not launched until first client request. Defaults to false. */
+  lazy?: boolean;
 }
 
 export interface GetPageRequest {
