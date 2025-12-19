@@ -81,9 +81,14 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   console.log("Launching browser with persistent context...");
 
   // Launch persistent context - this persists cookies, localStorage, cache, etc.
+  // When host is 0.0.0.0, also bind Chrome's debugging port to all interfaces
+  const cdpArgs = [`--remote-debugging-port=${cdpPort}`];
+  if (host === "0.0.0.0") {
+    cdpArgs.push("--remote-debugging-address=0.0.0.0");
+  }
   const context: BrowserContext = await chromium.launchPersistentContext(userDataDir, {
     headless,
-    args: [`--remote-debugging-port=${cdpPort}`],
+    args: cdpArgs,
   });
   console.log("Browser launched with persistent profile...");
 
