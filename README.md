@@ -145,6 +145,50 @@ This allowlists the dev-browser skill and the `bun x tsx` command that runs the 
 
 For project-level settings, add to `.claude/settings.json` in your project root.
 
+## Remote Access
+
+Dev Browser can run the browser on a different machine (e.g., a Mac with a visible display) while Claude Code runs on a remote server. This is useful when:
+
+- Your AI coding environment runs headless on a server
+- You want to see the browser window on your local machine
+- You're using Tailscale or a LAN to connect machines
+
+### Server Setup (Machine with Browser)
+
+Start the server bound to all interfaces:
+
+```bash
+cd skills/dev-browser
+HOST=0.0.0.0 bun run scripts/start-server.ts
+```
+
+The server includes a WebSocket proxy that routes Chrome DevTools Protocol (CDP) connections through port 9222, working around Chrome's localhost-only CDP limitation on macOS.
+
+### Client Setup (Machine Running Claude Code)
+
+When connecting from a remote machine, the client needs to rewrite the WebSocket URL:
+
+```javascript
+import { chromium } from 'playwright';
+
+const SERVER_IP = '100.75.245.29'; // Your server's Tailscale/LAN IP
+
+// Get the WebSocket endpoint
+const res = await fetch(`http://${SERVER_IP}:9222`);
+const info = await res.json();
+
+// Replace localhost with actual IP
+const wsEndpoint = info.wsEndpoint.replace(
+  /^(ws:\/\/)(localhost|127\.0\.0\.1)/,
+  `$1${SERVER_IP}`
+);
+
+const browser = await chromium.connectOverCDP(wsEndpoint);
+// ... use browser normally
+```
+
+**Important:** Use Node.js (not Bun) for remote client scripts due to a Bun WebSocket compatibility issue that causes immediate disconnects over remote connections.
+
 ## Usage
 
 Once installed, just ask Claude to interact with your browser. Here are some example prompts:
