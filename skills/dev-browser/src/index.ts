@@ -236,7 +236,7 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
 
         // Pipe data bidirectionally - use flowing mode
         proxySocket.on("data", (data) => {
-          console.log(`Received ${data.length} bytes from Chrome`);
+          console.log(`Received ${data.length} bytes from Chrome:`, data.toString().substring(0, 500));
           const flushed = socket.write(data);
           if (!flushed) {
             proxySocket.pause();
