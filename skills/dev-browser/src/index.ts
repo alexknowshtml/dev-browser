@@ -214,10 +214,19 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
         console.log("Connected to Chrome CDP port");
 
         // Reconstruct the HTTP upgrade request to send to Chrome
-        const headers = Object.entries(req.headers)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join("\r\n");
-        const upgradeRequest = `${req.method} ${req.url} HTTP/1.1\r\n${headers}\r\n\r\n`;
+        // Handle both string and array header values
+        const headerLines: string[] = [];
+        for (const [key, value] of Object.entries(req.headers)) {
+          if (Array.isArray(value)) {
+            for (const v of value) {
+              headerLines.push(`${key}: ${v}`);
+            }
+          } else if (value !== undefined) {
+            headerLines.push(`${key}: ${value}`);
+          }
+        }
+        const upgradeRequest = `${req.method} ${req.url} HTTP/1.1\r\n${headerLines.join("\r\n")}\r\n\r\n`;
+        console.log("Sending upgrade request to Chrome:\n" + upgradeRequest);
 
         // Send the upgrade request and any buffered data
         proxySocket.write(upgradeRequest);
@@ -227,6 +236,7 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
 
         // Pipe data bidirectionally - use flowing mode
         proxySocket.on("data", (data) => {
+          console.log(`Received ${data.length} bytes from Chrome`);
           const flushed = socket.write(data);
           if (!flushed) {
             proxySocket.pause();
