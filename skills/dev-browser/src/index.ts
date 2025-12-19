@@ -207,8 +207,12 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   // This works around Chrome ignoring --remote-debugging-address on macOS
   httpServer.on("upgrade", (req, socket, head) => {
     if (req.url?.startsWith("/devtools")) {
+      console.log(`WebSocket upgrade request: ${req.url}`);
+
       // Connect to Chrome's CDP port and forward the WebSocket upgrade
       const proxySocket = tcpConnect(cdpPort, "127.0.0.1", () => {
+        console.log("Connected to Chrome CDP port");
+
         // Reconstruct the HTTP upgrade request to send to Chrome
         const headers = Object.entries(req.headers)
           .map(([k, v]) => `${k}: ${v}`)
@@ -221,9 +225,32 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
           proxySocket.write(head);
         }
 
-        // Pipe data bidirectionally
-        socket.pipe(proxySocket);
-        proxySocket.pipe(socket);
+        // Pipe data bidirectionally - use flowing mode
+        proxySocket.on("data", (data) => {
+          const flushed = socket.write(data);
+          if (!flushed) {
+            proxySocket.pause();
+            socket.once("drain", () => proxySocket.resume());
+          }
+        });
+
+        socket.on("data", (data) => {
+          const flushed = proxySocket.write(data);
+          if (!flushed) {
+            socket.pause();
+            proxySocket.once("drain", () => socket.resume());
+          }
+        });
+
+        proxySocket.on("end", () => {
+          console.log("Chrome closed connection");
+          socket.end();
+        });
+
+        socket.on("end", () => {
+          console.log("Client closed connection");
+          proxySocket.end();
+        });
       });
 
       proxySocket.on("error", (err) => {
