@@ -132,6 +132,18 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   const app: Express = express();
   app.use(express.json());
 
+  // Set up WebSocket proxy for CDP connections EARLY (before other routes)
+  // This allows remote clients to connect through our server since Chrome's
+  // --remote-debugging-address=0.0.0.0 doesn't work reliably on macOS
+  const cdpProxy = createProxyMiddleware<Request, Response>({
+    target: `http://127.0.0.1:${cdpPort}`,
+    changeOrigin: true,
+    ws: true,
+  });
+
+  // Proxy /devtools/* paths to Chrome's CDP endpoint
+  app.use("/devtools", cdpProxy);
+
   // GET / - server info
   app.get("/", (_req: Request, res: Response) => {
     const response: ServerInfoResponse = { wsEndpoint };
@@ -200,24 +212,10 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
     res.status(404).json({ error: "page not found" });
   });
 
-  // Set up WebSocket proxy for CDP connections
-  // This allows remote clients to connect through our server since Chrome's
-  // --remote-debugging-address=0.0.0.0 doesn't work reliably on macOS
-  const cdpProxy = createProxyMiddleware<Request, Response>({
-    target: `http://127.0.0.1:${cdpPort}`,
-    changeOrigin: true,
-    ws: true,
-    // Don't strip the /devtools prefix - Chrome expects the full path
-    pathFilter: "/devtools/**",
-  });
-
-  // Proxy /devtools/* paths to Chrome's CDP endpoint
-  app.use(cdpProxy);
-
   // Create HTTP server for WebSocket upgrade support
   const httpServer = createServer(app);
 
-  // Handle WebSocket upgrades for the proxy
+  // Handle WebSocket upgrades for the CDP proxy
   httpServer.on("upgrade", (req, socket, head) => {
     if (req.url?.startsWith("/devtools")) {
       cdpProxy.upgrade(req, socket, head);
