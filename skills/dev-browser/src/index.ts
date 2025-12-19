@@ -132,17 +132,22 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   const app: Express = express();
   app.use(express.json());
 
-  // Set up WebSocket proxy for CDP connections EARLY (before other routes)
+  // Set up WebSocket proxy for CDP connections
   // This allows remote clients to connect through our server since Chrome's
   // --remote-debugging-address=0.0.0.0 doesn't work reliably on macOS
   const cdpProxy = createProxyMiddleware<Request, Response>({
     target: `http://127.0.0.1:${cdpPort}`,
     changeOrigin: true,
     ws: true,
+    pathRewrite: undefined, // Keep the original path
   });
 
-  // Proxy /devtools/* paths to Chrome's CDP endpoint
-  app.use("/devtools", cdpProxy);
+  // Proxy /devtools/* paths to Chrome's CDP endpoint (keep full path)
+  app.use("/devtools", (req, res, next) => {
+    // Restore the /devtools prefix that Express strips
+    req.url = "/devtools" + req.url;
+    cdpProxy(req, res, next);
+  });
 
   // GET / - server info
   app.get("/", (_req: Request, res: Response) => {
