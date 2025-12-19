@@ -1,8 +1,7 @@
 module.exports = {
   apps: [{
     name: 'dev-browser',
-    script: 'scripts/start-server.ts',
-    interpreter: 'bun',
+    script: 'start.sh',
     cwd: __dirname,
     env: {
       HOST: '0.0.0.0',
