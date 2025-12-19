@@ -212,21 +212,31 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
     const targetUrl = `ws://127.0.0.1:${cdpPort}${req.url}`;
     console.log(`Proxying WebSocket to: ${targetUrl}`);
 
+    // Queue messages until Chrome connection is open
+    const messageQueue: (Buffer | ArrayBuffer | Buffer[])[] = [];
+    let chromeReady = false;
+
     const chromeWs = new WebSocket(targetUrl);
 
     chromeWs.on("open", () => {
       console.log("Connected to Chrome CDP");
+      chromeReady = true;
+      // Send any queued messages
+      for (const msg of messageQueue) {
+        chromeWs.send(msg);
+      }
+      messageQueue.length = 0;
     });
 
-    chromeWs.on("message", (data) => {
+    chromeWs.on("message", (data, isBinary) => {
       if (clientWs.readyState === WebSocket.OPEN) {
-        clientWs.send(data);
+        clientWs.send(data, { binary: isBinary });
       }
     });
 
-    chromeWs.on("close", () => {
-      console.log("Chrome WebSocket closed");
-      clientWs.close();
+    chromeWs.on("close", (code, reason) => {
+      console.log(`Chrome WebSocket closed: code=${code} reason=${reason.toString()}`);
+      clientWs.close(code, reason);
     });
 
     chromeWs.on("error", (err) => {
@@ -234,14 +244,16 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
       clientWs.close();
     });
 
-    clientWs.on("message", (data) => {
-      if (chromeWs.readyState === WebSocket.OPEN) {
-        chromeWs.send(data);
+    clientWs.on("message", (data, isBinary) => {
+      if (chromeReady && chromeWs.readyState === WebSocket.OPEN) {
+        chromeWs.send(data, { binary: isBinary });
+      } else {
+        messageQueue.push(data);
       }
     });
 
-    clientWs.on("close", () => {
-      console.log("Client WebSocket closed");
+    clientWs.on("close", (code, reason) => {
+      console.log(`Client WebSocket closed: code=${code} reason=${reason.toString()}`);
       chromeWs.close();
     });
 
