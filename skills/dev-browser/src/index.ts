@@ -4,7 +4,7 @@ import { mkdirSync } from "fs";
 import { join } from "path";
 import type { Socket } from "net";
 import { createServer as createHttpServer } from "http";
-import { createServer as createTcpServer, connect as tcpConnect } from "net";
+import WebSocket, { WebSocketServer } from "ws";
 import type {
   ServeOptions,
   GetPageRequest,
@@ -203,84 +203,60 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   // Create HTTP server
   const httpServer = createHttpServer(app);
 
-  // Handle WebSocket upgrades by proxying to Chrome's CDP port
+  // Create WebSocket server for proxying CDP connections
   // This works around Chrome ignoring --remote-debugging-address on macOS
+  const wss = new WebSocketServer({ noServer: true });
+
+  // Handle WebSocket connections by proxying to Chrome's CDP
+  wss.on("connection", (clientWs, req) => {
+    const targetUrl = `ws://127.0.0.1:${cdpPort}${req.url}`;
+    console.log(`Proxying WebSocket to: ${targetUrl}`);
+
+    const chromeWs = new WebSocket(targetUrl);
+
+    chromeWs.on("open", () => {
+      console.log("Connected to Chrome CDP");
+    });
+
+    chromeWs.on("message", (data) => {
+      if (clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(data);
+      }
+    });
+
+    chromeWs.on("close", () => {
+      console.log("Chrome WebSocket closed");
+      clientWs.close();
+    });
+
+    chromeWs.on("error", (err) => {
+      console.error("Chrome WebSocket error:", err);
+      clientWs.close();
+    });
+
+    clientWs.on("message", (data) => {
+      if (chromeWs.readyState === WebSocket.OPEN) {
+        chromeWs.send(data);
+      }
+    });
+
+    clientWs.on("close", () => {
+      console.log("Client WebSocket closed");
+      chromeWs.close();
+    });
+
+    clientWs.on("error", (err) => {
+      console.error("Client WebSocket error:", err);
+      chromeWs.close();
+    });
+  });
+
+  // Handle upgrade requests
   httpServer.on("upgrade", (req, socket, head) => {
     if (req.url?.startsWith("/devtools")) {
       console.log(`WebSocket upgrade request: ${req.url}`);
-
-      // Ensure the client socket is in flowing mode (required for upgrade sockets)
-      socket.resume();
-      // Disable Nagle's algorithm for immediate sends
-      if ('setNoDelay' in socket) {
-        (socket as any).setNoDelay(true);
-      }
-
-      // Connect to Chrome's CDP port and forward the WebSocket upgrade
-      const proxySocket = tcpConnect(cdpPort, "127.0.0.1", () => {
-        proxySocket.setNoDelay(true);
-        console.log("Connected to Chrome CDP port");
-
-        // Reconstruct the HTTP upgrade request to send to Chrome
-        // Handle both string and array header values
-        const headerLines: string[] = [];
-        for (const [key, value] of Object.entries(req.headers)) {
-          if (Array.isArray(value)) {
-            for (const v of value) {
-              headerLines.push(`${key}: ${v}`);
-            }
-          } else if (value !== undefined) {
-            headerLines.push(`${key}: ${value}`);
-          }
-        }
-        const upgradeRequest = `${req.method} ${req.url} HTTP/1.1\r\n${headerLines.join("\r\n")}\r\n\r\n`;
-        console.log("Sending upgrade request to Chrome:\n" + upgradeRequest);
-
-        // Send the upgrade request and any buffered data
-        proxySocket.write(upgradeRequest);
-        if (head.length > 0) {
-          proxySocket.write(head);
-        }
-
-        // Pipe data bidirectionally - use flowing mode
-        proxySocket.on("data", (data) => {
-          console.log(`Received ${data.length} bytes from Chrome:`, data.toString().substring(0, 500));
-          console.log(`Client socket state: writable=${socket.writable}, destroyed=${socket.destroyed}`);
-          const flushed = socket.write(data);
-          console.log(`Write flushed: ${flushed}`);
-          if (!flushed) {
-            proxySocket.pause();
-            socket.once("drain", () => proxySocket.resume());
-          }
-        });
-
-        socket.on("data", (data) => {
-          const flushed = proxySocket.write(data);
-          if (!flushed) {
-            socket.pause();
-            proxySocket.once("drain", () => socket.resume());
-          }
-        });
-
-        proxySocket.on("end", () => {
-          console.log("Chrome closed connection");
-          socket.end();
-        });
-
-        socket.on("end", () => {
-          console.log("Client closed connection");
-          proxySocket.end();
-        });
-      });
-
-      proxySocket.on("error", (err) => {
-        console.error("CDP proxy error:", err);
-        socket.destroy();
-      });
-
-      socket.on("error", (err) => {
-        console.error("Client socket error:", err);
-        proxySocket.destroy();
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit("connection", ws, req);
       });
     } else {
       socket.destroy();
