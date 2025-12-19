@@ -209,6 +209,9 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
     if (req.url?.startsWith("/devtools")) {
       console.log(`WebSocket upgrade request: ${req.url}`);
 
+      // Ensure the client socket is in flowing mode (required for upgrade sockets)
+      socket.resume();
+
       // Connect to Chrome's CDP port and forward the WebSocket upgrade
       const proxySocket = tcpConnect(cdpPort, "127.0.0.1", () => {
         console.log("Connected to Chrome CDP port");
