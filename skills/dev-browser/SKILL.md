@@ -44,6 +44,48 @@ The first run may take longer while dependencies are installed. Subsequent runs 
 
 The server starts a Chromium browser with a REST API for page management (default: `http://localhost:9222`).
 
+### Remote Access (Running Server on a Different Machine)
+
+The server can be accessed from a remote machine (e.g., over Tailscale or LAN). Start the server with `HOST=0.0.0.0`:
+
+```bash
+HOST=0.0.0.0 bun run scripts/start-server.ts
+```
+
+This binds the HTTP API and WebSocket proxy to all interfaces. The server includes a built-in WebSocket proxy that routes CDP connections through port 9222, working around Chrome's localhost-only CDP limitation on macOS.
+
+**Important for remote connections:** Use Node.js (not Bun) for client scripts due to a Bun WebSocket compatibility issue that causes immediate disconnects over remote connections.
+
+#### Remote Client Example
+
+When connecting from a remote machine, fetch the WebSocket endpoint and replace localhost with the server's IP:
+
+```javascript
+// Run with: node script.mjs
+import { chromium } from 'playwright';
+
+const SERVER_IP = '100.75.245.29'; // Your server's IP
+
+// Get the WebSocket endpoint
+const res = await fetch(`http://${SERVER_IP}:9222`);
+const info = await res.json();
+
+// Replace localhost with actual IP
+const wsEndpoint = info.wsEndpoint.replace(
+  /^(ws:\/\/)(localhost|127\.0\.0\.1)/,
+  `$1${SERVER_IP}`
+);
+
+const browser = await chromium.connectOverCDP(wsEndpoint);
+const context = browser.contexts()[0];
+const page = await context.newPage();
+
+await page.goto('https://example.com');
+console.log('Title:', await page.title());
+
+await browser.close();
+```
+
 ## How It Works
 
 1. **Server** launches a persistent Chromium browser and manages named pages via REST API
