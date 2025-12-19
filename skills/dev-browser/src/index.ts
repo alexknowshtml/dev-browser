@@ -53,6 +53,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 
 export async function serve(options: ServeOptions = {}): Promise<DevBrowserServer> {
   const port = options.port ?? 9222;
+  const host = options.host ?? "localhost";
   const headless = options.headless ?? false;
   const cdpPort = options.cdpPort ?? 9223;
   const profileDir = options.profileDir;
@@ -185,8 +186,8 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   });
 
   // Start the server
-  const server = app.listen(port, () => {
-    console.log(`HTTP API server running on port ${port}`);
+  const server = app.listen(port, host, () => {
+    console.log(`HTTP API server running on ${host}:${port}`);
   });
 
   // Track active connections for clean shutdown

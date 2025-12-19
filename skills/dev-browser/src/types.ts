@@ -2,6 +2,8 @@
 
 export interface ServeOptions {
   port?: number;
+  /** Host to bind the server to. Defaults to "localhost". Use "0.0.0.0" for remote access. */
+  host?: string;
   headless?: boolean;
   cdpPort?: number;
   /** Directory to store persistent browser profiles (cookies, localStorage, etc.) */

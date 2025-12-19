@@ -100,8 +100,10 @@ try {
 
 console.log("Starting dev browser server...");
 const headless = process.env.HEADLESS === "true";
+const host = process.env.HOST ?? "localhost";
 const server = await serve({
   port: 9222,
+  host,
   headless,
   profileDir,
 });
