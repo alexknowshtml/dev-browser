@@ -211,9 +211,14 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
 
       // Ensure the client socket is in flowing mode (required for upgrade sockets)
       socket.resume();
+      // Disable Nagle's algorithm for immediate sends
+      if ('setNoDelay' in socket) {
+        (socket as any).setNoDelay(true);
+      }
 
       // Connect to Chrome's CDP port and forward the WebSocket upgrade
       const proxySocket = tcpConnect(cdpPort, "127.0.0.1", () => {
+        proxySocket.setNoDelay(true);
         console.log("Connected to Chrome CDP port");
 
         // Reconstruct the HTTP upgrade request to send to Chrome
