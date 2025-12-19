@@ -249,7 +249,14 @@ export async function connect(serverUrl = "http://localhost:9222"): Promise<DevB
           throw new Error(`Server returned ${res.status}: ${await res.text()}`);
         }
         const info = (await res.json()) as ServerInfoResponse;
-        wsEndpoint = info.wsEndpoint;
+
+        // Replace localhost/127.0.0.1 in wsEndpoint with the actual server host
+        // This enables remote connections where the server returns its local address
+        const serverHost = new URL(serverUrl).hostname;
+        wsEndpoint = info.wsEndpoint.replace(
+          /^(ws:\/\/)(localhost|127\.0\.0\.1)/,
+          `$1${serverHost}`
+        );
 
         // Connect to the browser via CDP
         browser = await chromium.connectOverCDP(wsEndpoint);
