@@ -203,15 +203,16 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   // Set up WebSocket proxy for CDP connections
   // This allows remote clients to connect through our server since Chrome's
   // --remote-debugging-address=0.0.0.0 doesn't work reliably on macOS
-  const cdpProxy = createProxyMiddleware({
+  const cdpProxy = createProxyMiddleware<Request, Response>({
     target: `http://127.0.0.1:${cdpPort}`,
     changeOrigin: true,
     ws: true,
-    logger: console,
+    // Don't strip the /devtools prefix - Chrome expects the full path
+    pathFilter: "/devtools/**",
   });
 
   // Proxy /devtools/* paths to Chrome's CDP endpoint
-  app.use("/devtools", cdpProxy);
+  app.use(cdpProxy);
 
   // Create HTTP server for WebSocket upgrade support
   const httpServer = createServer(app);
