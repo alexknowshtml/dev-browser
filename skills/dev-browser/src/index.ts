@@ -1,8 +1,10 @@
 import express, { type Express, type Request, type Response } from "express";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { chromium, type BrowserContext, type Page } from "playwright";
 import { mkdirSync } from "fs";
 import { join } from "path";
 import type { Socket } from "net";
+import { createServer } from "http";
 import type {
   ServeOptions,
   GetPageRequest,
@@ -95,8 +97,16 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
   // Get the CDP WebSocket endpoint from Chrome's JSON API (with retry for slow startup)
   const cdpResponse = await fetchWithRetry(`http://127.0.0.1:${cdpPort}/json/version`);
   const cdpInfo = (await cdpResponse.json()) as { webSocketDebuggerUrl: string };
-  const wsEndpoint = cdpInfo.webSocketDebuggerUrl;
-  console.log(`CDP WebSocket endpoint: ${wsEndpoint}`);
+  const internalWsEndpoint = cdpInfo.webSocketDebuggerUrl;
+  console.log(`Internal CDP WebSocket endpoint: ${internalWsEndpoint}`);
+
+  // Create proxied WebSocket endpoint that goes through our server
+  // This works around Chrome ignoring --remote-debugging-address on macOS
+  // Original: ws://127.0.0.1:9223/devtools/browser/xxx
+  // Proxied:  ws://<host>:9222/devtools/browser/xxx
+  const wsPath = new URL(internalWsEndpoint).pathname;
+  const wsEndpoint = `ws://${host === "0.0.0.0" ? "127.0.0.1" : host}:${port}${wsPath}`;
+  console.log(`Proxied CDP WebSocket endpoint: ${wsEndpoint}`);
 
   // Registry entry type for page tracking
   interface PageEntry {
@@ -190,8 +200,31 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
     res.status(404).json({ error: "page not found" });
   });
 
+  // Set up WebSocket proxy for CDP connections
+  // This allows remote clients to connect through our server since Chrome's
+  // --remote-debugging-address=0.0.0.0 doesn't work reliably on macOS
+  const cdpProxy = createProxyMiddleware({
+    target: `http://127.0.0.1:${cdpPort}`,
+    changeOrigin: true,
+    ws: true,
+    logger: console,
+  });
+
+  // Proxy /devtools/* paths to Chrome's CDP endpoint
+  app.use("/devtools", cdpProxy);
+
+  // Create HTTP server for WebSocket upgrade support
+  const httpServer = createServer(app);
+
+  // Handle WebSocket upgrades for the proxy
+  httpServer.on("upgrade", (req, socket, head) => {
+    if (req.url?.startsWith("/devtools")) {
+      cdpProxy.upgrade(req, socket, head);
+    }
+  });
+
   // Start the server
-  const server = app.listen(port, host, () => {
+  const server = httpServer.listen(port, host, () => {
     console.log(`HTTP API server running on ${host}:${port}`);
   });
 
